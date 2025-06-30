@@ -1,42 +1,69 @@
 ﻿#include <iostream>
-#include <winsock2.h>
-#include <ws2tcpip.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 
-#pragma comment(lib, "ws2_32.lib")
+#define PORT "8080"
+#define QUESIZE 5
+
+
 int main()
 {
-    WSADATA wsaData;
-    int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
-    if (result != 0) {
-        std::cerr << "WSAStartup failed: " << result << std::endl;
-        return 1;
+    int sockfd, newsockfd;
+    struct addrinfo hints, *servinfo, *p;
+    struct sockaddr_storage client_addr;
+    socklen_t client_addr_len;
+    int res;
+
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    char HostName[256];
+
+    if ((res = getaddrinfo(nullptr, PORT, &hints, &servinfo)) != 0) {
+        std::cerr << "getaddrinfo error: " << gai_strerror(res) << std::endl;
+        exit(EXIT_FAILURE);
     }
 
-    SOCKET serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (serverSocket == INVALID_SOCKET)
-    {
-        std::cerr << "socket() failed: " << WSAGetLastError() << std::endl;
-        WSACleanup();
-        return 1;
+    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+        std::cerr << "socket error" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    if (gethostname(HostName, sizeof(HostName))==-1) {
+        std::cerr << "gethostname error" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    std::cout << "HostName: " << HostName << std::endl;
+    if (bind(sockfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
+        std::cerr << "bind error" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    if (listen(sockfd, QUESIZE) == -1) {
+        std::cerr << "listen error" << std::endl;
+        exit(EXIT_FAILURE);
     }
 
-    // define server address
-    sockaddr_in serverAddress;
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(1234);
-    serverAddress.sin_addr.s_addr = INADDR_ANY;
-
-    if (bind(serverSocket, (sockaddr*)&serverAddress, sizeof(serverAddress)) == SOCKET_ERROR)
-    {
-        std::cerr << "bind() failed: " << WSAGetLastError() << std::endl;
-        WSACleanup();
-        return 1;
+    client_addr_len = sizeof client_addr;
+    if ((newsockfd = accept(sockfd, reinterpret_cast<struct sockaddr *> (&client_addr), &client_addr_len)) == -1) {
+        std::cerr << "accept error" << std::endl;
+        exit(EXIT_FAILURE);
     }
 
-    listen(serverSocket, 5);
+    std::string msg = "Hello World!\n";
+    int len = msg.size();
+    if (send(newsockfd, msg.c_str(), len, 0) == -1) {
+        std::cerr << "send error" << std::endl;
+        exit(EXIT_FAILURE);
+    }
 
-    int clientSocket = accept(serverSocket, nullptr, nullptr);
-
-
-    WSACleanup();
+    std::cin.get();
+    close(newsockfd);
+    close(sockfd);
+    freeaddrinfo(servinfo);
 }
