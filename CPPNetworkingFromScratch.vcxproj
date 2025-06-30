@@ -154,6 +154,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BasicClientServerHandshake\TCP_Client.cpp" />
+    <ClCompile Include="BasicClientServerHandshake\TCP_Server.cpp" />
     <ClCompile Include="CPPNetworkingFromScratch.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
